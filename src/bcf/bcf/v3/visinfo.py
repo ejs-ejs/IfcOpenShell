@@ -36,6 +36,18 @@ class VisualizationInfoHandler:
     def guid(self) -> str:
         """Return the GUID of the visualization info."""
         return self.visualization_info.guid
+    
+    @property
+    def snapshot(self) -> {}:
+        """Return the Snaphot object."""
+        return self.snapshot
+    
+    @snapshot.setter
+    def snapshot(self, bytes : [] = None) -> None:
+        print(F"Calling snapshot setter with '{bytes}'")
+        """Set the Snaphot"""
+        if bytes is not None:
+            self.snapshot = bytes
 
     @classmethod
     def from_topic_viewpoints(
@@ -171,6 +183,23 @@ class VisualizationInfoHandler:
         """
         xml_handler = xml_handler or XmlParserSerializer()
         return cls(visualization_info=build_viewpoint(element), xml_handler=xml_handler)
+    
+    @classmethod
+    def create_new_empty(
+        cls,
+        xml_handler: Optional[AbstractXmlParserSerializer] = None,
+    ) -> "VisualizationInfoHandler":
+        """
+        Create a new empty VisualizationInfoHandler object.
+
+        Args:
+            xml_handler: The XML handler to use.
+
+        Returns:
+            The VisualizationInfoHandler object.
+        """
+        xml_handler = xml_handler or XmlParserSerializer()
+        return cls(visualization_info=build_empty_viewpoint(), xml_handler=xml_handler)
 
     @classmethod
     def create_from_point_and_guids(
@@ -217,6 +246,23 @@ def build_viewpoint(element: entity_instance) -> mdl.VisualizationInfo:
         perspective_camera=build_camera(elem_placement),
     )
 
+
+@lru_cache(maxsize=None)
+def build_empty_viewpoint() -> mdl.VisualizationInfo:
+    """
+    Return a BCF viewpoint.
+
+    This function is cached to speedudp the creation of multiple BCF topics regarding the same element.
+
+    Args:
+
+    Returns:
+        The BCF viewpoint definition.
+    """
+    
+    return mdl.VisualizationInfo(
+        guid=str(uuid.uuid4()),
+    )
 
 def build_viewpoint_from_position_and_guids(position: NDArray[np.float64], *guids: str) -> mdl.VisualizationInfo:
     """

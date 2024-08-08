@@ -1,5 +1,4 @@
 """BCF XML V3 Topic handler."""
-
 import datetime
 import uuid
 import zipfile
@@ -165,6 +164,13 @@ class TopicHandler:
         if self.bim_snippet:
             destination_zip.writestr(f"{self.topic.guid}/{ref_filename}", self.bim_snippet)
 
+    def add_empty_viewpoint(self) -> None:
+        """
+        Add an empty viewpoint to the topic.
+        """
+        new_viewpoint = VisualizationInfoHandler.create_new_empty(self._xml_handler)
+        self.add_empty_visinfo_handler(new_viewpoint)
+
     def add_viewpoint(self, element: entity_instance) -> None:
         """
         Add a viewpoint tergeting an IFC element to the topic.
@@ -188,6 +194,14 @@ class TopicHandler:
         self.add_visinfo_handler(vi_handler)
 
     def add_visinfo_handler(self, new_viewpoint: VisualizationInfoHandler) -> None:
+        self.viewpoints[new_viewpoint.guid + ".bcfv"] = new_viewpoint
+        if self.topic.viewpoints is None:
+            self.topic.viewpoints = mdl.TopicViewpoints()
+        self.topic.viewpoints.view_point.append(
+            mdl.ViewPoint(viewpoint=new_viewpoint.guid + ".bcfv", guid=new_viewpoint.guid)
+        )
+    
+    def add_empty_visinfo_handler(self, new_viewpoint: VisualizationInfoHandler) -> None:
         self.viewpoints[new_viewpoint.guid + ".bcfv"] = new_viewpoint
         if self.topic.viewpoints is None:
             self.topic.viewpoints = mdl.TopicViewpoints()
