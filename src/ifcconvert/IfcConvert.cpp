@@ -297,10 +297,6 @@ int main(int argc, char** argv) {
             "Can take several minutes on large models.")
 		("center-model-geometry",
             "Centers the elements by applying the center point of all mesh vertices as an offset.")
-        ("model-offset", po::value<std::string>(&offset_str),
-            "Applies an arbitrary offset of form 'x;y;z' to all placements.")
-		("model-rotation", po::value<std::string>(&rotation_str),
-			"Applies an arbitrary quaternion rotation of form 'x;y;z;w' to all placements.")
 		("include", po::value<inclusion_filter>(&include_filter)->multitoken(),
 			"Specifies that the instances that match a specific filtering criteria are to be included in the geometrical output:\n"
 			"1) 'entities': the following list of types should be included. SVG output defaults "
@@ -1486,7 +1482,7 @@ namespace latebound_access {
 			enum_type->enumeration_items().end(),
 			t);
 
-		return set(inst, attr, IfcWrite::IfcWriteArgument::EnumerationReference(it - enum_type->enumeration_items().begin(), it->c_str()));
+		return set(inst, attr, EnumerationReference(enum_type, it - enum_type->enumeration_items().begin()));
 	}
 
 	template <typename T>
@@ -1495,19 +1491,17 @@ namespace latebound_access {
 		auto i = decl->attribute_index(attr);
 
 		auto attr_type = decl->attribute_by_index(i)->type_of_attribute();
-		if (attr_type->as_named_type() && attr_type->as_named_type()->declared_type()->as_enumeration_type() && !std::is_same<T, IfcWrite::IfcWriteArgument::EnumerationReference>::value) {
+		if (attr_type->as_named_type() && attr_type->as_named_type()->declared_type()->as_enumeration_type() && !std::is_same<T, EnumerationReference>::value) {
 			set_enumeration(inst, attr, attr_type->as_named_type()->declared_type()->as_enumeration_type(), t);
 		} else {
-			IfcWrite::IfcWriteArgument* a = new IfcWrite::IfcWriteArgument;
-			a->set(t);
-			inst->data().attributes()[i] = a;
+			inst->set_attribute_value(i, t);
 		}
 	}
 
 	IfcUtil::IfcBaseClass* create(IfcParse::IfcFile& f, const std::string& entity) {
 		auto decl = f.schema()->declaration_by_name(entity);
-		auto data = new IfcEntityInstanceData(decl);
-		auto inst = f.schema()->instantiate(data);
+		auto data = IfcEntityInstanceData(storage_t(decl->as_entity()->attribute_count()));
+		auto inst = f.schema()->instantiate(decl, std::move(data));
 		if (decl->is("IfcRoot")) {
 			IfcParse::IfcGlobalId guid;
 			latebound_access::set(inst, "GlobalId", (std::string) guid);
@@ -1547,7 +1541,7 @@ void fix_quantities(IfcParse::IfcFile& f, bool no_progress, bool quiet, bool std
 		auto IfcRelDefinesByProperties = f.schema()->declaration_by_name("IfcRelDefinesByProperties");
 		if (element_quantities) {
 			for (auto& eq : *element_quantities) {
-				auto rels = eq->data().getInverse(IfcRelDefinesByProperties, -1);
+				auto rels = eq->file_->getInverse(eq->id(), IfcRelDefinesByProperties, -1);
 				for (auto& rel : *rels) {
 					relationships.push_back(rel);
 				}
